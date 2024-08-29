@@ -129,6 +129,13 @@ elif [ "$1" == "piplc" ]; then
     echo rpi > ../scripts/openplc_platform
     echo piplc > ../scripts/openplc_driver
 
+elif [ "$1" == "gespant" ]; then
+    echo "Activating winenerji gespant PLC driver"
+    cp ./hardware_layers/raspberrypi.cpp ./hardware_layer.cpp
+    echo "Setting Platform"
+    echo rpi > ../scripts/openplc_platform
+    echo gespant > ../scripts/openplc_driver
+
 else
     echo "Error: Invalid hardware layer"
 fi

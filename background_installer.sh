@@ -237,7 +237,8 @@ function finalize_install {
     if [ "$1" == "win" ]; then
         ./change_hardware_layer.sh blank
     else
-        ./change_hardware_layer.sh blank_linux
+        # ./change_hardware_layer.sh blank_linux
+        ./change_hardware_layer.sh gespant
     fi
     ./compile_program.sh blank_program.st
     cat > "$OPENPLC_DIR/start_openplc.sh" <<EOF

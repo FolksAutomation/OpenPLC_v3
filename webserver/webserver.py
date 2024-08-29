@@ -1729,6 +1729,8 @@ def hardware():
             else: return_str += "<option value='sl_rp4'>SL-RP4</option>"
             if (current_driver == "piplc"): return_str += "<option selected='selected' value='piplc'>Binary-6 PiPLC</option>"
             else: return_str += "<option value='piplc'>Binary-6 PiPLC</option>"
+            if (current_driver == "gespant"): return_str += "<option selected='selected' value='gespant'>gespant PLC</option>"
+            else: return_str += "<option value='gespant'>gespant PLC</option>"
             return_str += """
                         </select>
                         <br>
