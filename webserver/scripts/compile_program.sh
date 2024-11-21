@@ -112,8 +112,12 @@ elif [ "$OPENPLC_PLATFORM" = "linux" ]; then
     echo "Compilation finished successfully!"
     exit 0
     
-elif [ "$OPENPLC_PLATFORM" = "rpi" ]; then
-    echo "Compiling for Raspberry Pi"
+elif [ "$OPENPLC_PLATFORM" = "rpi" ] || [ "$OPENPLC_PLATFORM" = "gespant" ]; then
+    if [ "$OPENPLC_PLATFORM" = "rpi" ]; then
+        echo "Compiling for Raspberry Pi"
+    elif [ "$OPENPLC_PLATFORM" = "gespant" ]; then
+        echo "Compiling for GespantPLC"
+    fi
     echo "Generating object files..."
     if [ "$OPENPLC_DRIVER" = "sequent" ]; then
         g++ -std=gnu++11 -I ./lib -c Config0.c -lasiodnp3 -lasiopal -lopendnp3 -lopenpal -w -DSEQUENT

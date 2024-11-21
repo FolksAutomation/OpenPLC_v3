@@ -6,6 +6,7 @@ import time
 from threading import Thread
 from queue import Queue, Empty
 import os.path
+import gespant_func as gespant_func
 
 intervals = (
     ('weeks', 604800),  # 60 * 60 * 24 * 7
@@ -74,11 +75,13 @@ class runtime:
     project_name = ""
     project_description = ""
     runtime_status = "Stopped"
-    
+    ledsys = gespant_func.LedSys()
+
     def start_runtime(self):
         if (self.status() == "Stopped"):
             self.theprocess = subprocess.Popen(['./core/openplc'])  # XXX: iPAS
             self.runtime_status = "Running"
+            self.ledsys.callbackfunction_start()
 
     def _rpc(self, msg, timeout=1000):
         data = ""
@@ -100,6 +103,7 @@ class runtime:
         if (self.status() == "Running"):
             self._rpc(f'quit()')
             self.runtime_status = "Stopped"
+            self.ledsys.callbackfunction_stop()
 
             while self.theprocess.poll() is None:  # XXX: iPAS, to prevent the defunct killed process.
                 time.sleep(1)  # https://www.reddit.com/r/learnpython/comments/776r96/defunct_python_process_when_using_subprocesspopen/

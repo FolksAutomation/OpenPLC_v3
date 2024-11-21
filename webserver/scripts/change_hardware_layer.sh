@@ -131,9 +131,9 @@ elif [ "$1" == "piplc" ]; then
 
 elif [ "$1" == "gespant" ]; then
     echo "Activating winenerji gespant PLC driver"
-    cp ./hardware_layers/raspberrypi.cpp ./hardware_layer.cpp
+    cp ./hardware_layers/gespantPLC.cpp ./hardware_layer.cpp
     echo "Setting Platform"
-    echo rpi > ../scripts/openplc_platform
+    echo gespant > ../scripts/openplc_platform
     echo gespant > ../scripts/openplc_driver
 
 else
