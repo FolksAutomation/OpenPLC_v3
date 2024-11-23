@@ -13,6 +13,7 @@ import monitoring as monitor
 import sys
 import ctypes
 import socket
+import gespant_func as gespant
 
 import flask 
 import flask_login
@@ -2393,7 +2394,16 @@ def escape(s, quote=True):
         s = s.replace('\'', "&#x27;")
     return s
 
+def Gespant_start_plc():
+    openplc_runtime.start_runtime()
+    time.sleep(1)
+    configure_runtime()
+    monitor.parse_st(openplc_runtime.project_file)
 
+def Gespant_stop_plc():
+    openplc_runtime.stop_runtime()
+    time.sleep(1)
+    monitor.stop_monitor()
 #----------------------------------------------------------------------------
 #Main dummy function. Only displays a message and exits. The app keeps
 #running on the background by Flask
@@ -2434,6 +2444,8 @@ if __name__ == '__main__':
                 time.sleep(1)
                 configure_runtime()
                 monitor.parse_st(openplc_runtime.project_file)
+            
+            gespant.run_thred_GespantGPIO(start_run, Gespant_start_plc, Gespant_stop_plc)
             
             app.run(debug=False, host='0.0.0.0', threaded=True, port=8080)
         
