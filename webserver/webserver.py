@@ -13,6 +13,7 @@ import monitoring as monitor
 import sys
 import ctypes
 import socket
+import mimetypes
 
 import flask 
 import flask_login
@@ -27,6 +28,35 @@ openplc_runtime = openplc.runtime()
 class User(flask_login.UserMixin):
     pass
 
+# Allowed MIME types and magic numbers (file signatures)
+IMAGE_MAGIC_NUMBERS = {
+    b'\xFF\xD8\xFF': 'image/jpeg',  # JPEG
+    b'\x89PNG\r\n\x1A\n': 'image/png',  # PNG
+    b'GIF87a': 'image/gif',  # GIF87a
+    b'GIF89a': 'image/gif',  # GIF89a
+}
+
+# Function to check MIME type and file signature
+def is_allowed_file(file):
+    # First, check the MIME type based on the file extension
+    mime_type, _ = mimetypes.guess_type(file.filename)
+    if mime_type not in IMAGE_MAGIC_NUMBERS.values():
+        return False
+
+    try:
+        # Read the first 8 bytes of the file to determine its magic number
+        file.seek(0)  # Ensure we're at the start of the file
+        file_header = file.read(8)
+        file.seek(0)  # Reset file pointer after reading
+
+        # Check if the file header matches a known image format
+        for magic, expected_mime in IMAGE_MAGIC_NUMBERS.items():
+            if file_header.startswith(magic):
+                return True
+
+        return False
+    except Exception:
+        return False
 
 def configure_runtime():
     global openplc_runtime
@@ -63,6 +93,13 @@ def configure_runtime():
                     else:
                         print("Disabling EtherNet/IP")
                         openplc_runtime.stop_enip()
+                elif (row[0] == "snap7"):
+                    if (row[1] != "false"):
+                        print("Enabling S7 Protocol")
+                        openplc_runtime.start_snap7()
+                    else:
+                        print("Disabling S7 Protocol")
+                        openplc_runtime.stop_snap7()
                 elif (row[0] == "Pstorage_polling"):
                     if (row[1] != "disabled"):
                         print("Enabling Persistent Storage with polling rate of " + str(int(row[1])) + " seconds")
@@ -1126,7 +1163,7 @@ def add_modbus_device():
                             
             ports = [comport.device for comport in serial.tools.list_ports.comports()]
             for port in ports:
-                if (platform.system().startswith("CYGWIN")):
+                if (platform.system().startswith("CYGWIN")) or (platform.system().startswith("MSYS_NT")):
                     port_name = "COM" + str(int(port.split("/dev/ttyS")[1]) + 1)
                 else:
                     port_name = port
@@ -1264,7 +1301,7 @@ def modbus_edit_device():
                     return_str += "<div id=\"rtu-stuff\"><label for='dev_cport'><b>COM Port</b></label><select id='dev_cport' name='device_cport'>"
                     ports = [comport.device for comport in serial.tools.list_ports.comports()]
                     for port in ports:
-                        if (platform.system().startswith("CYGWIN")):
+                        if (platform.system().startswith("CYGWIN")) or (platform.system().startswith("MSYS_NT")):
                             port_name = "COM" + str(int(port.split("/dev/ttyS")[1]) + 1)
                         else:
                             port_name = port
@@ -1898,6 +1935,10 @@ def add_user():
                     if (form_has_picture):
                         pict_file = flask.request.files['file']
                         if (pict_file.filename != ''):
+                            # Ensure the file is allowed
+                            if not is_allowed_file(pict_file):
+                                return 'Invalid file format. Only JPEG, PNG, and GIF images are allowed.', 400
+
                             file_extension = pict_file.filename.split('.')
                             filename = str(random.randint(1,1000000)) + "." + file_extension[-1]
                             pict_file.save(os.path.join('static', filename))
@@ -2032,6 +2073,10 @@ def edit_user():
                     if (form_has_picture):
                         pict_file = flask.request.files['file']
                         if (pict_file.filename != ''):
+                            # Ensure the file is allowed
+                            if not is_allowed_file(pict_file):
+                                return 'Invalid file format. Only JPEG, PNG, and GIF images are allowed.', 400
+                            
                             file_extension = pict_file.filename.split('.')
                             filename = str(random.randint(1,1000000)) + "." + file_extension[-1]
                             pict_file.save(os.path.join('static', filename))
@@ -2150,6 +2195,9 @@ def settings():
                             slave_polling = str(row[1])
                         elif (row[0] == "Slave_timeout"):
                             slave_timeout = str(row[1])
+                        elif (row[0] == "snap7"):
+                            start_snap7 = str(row[1])
+                            
                     
                     if (modbus_port == 'disabled'):
                         return_str += """
@@ -2168,6 +2216,25 @@ def settings():
                         
                     return_str += """
                         <br>
+                        <br>
+                        <br>
+                        <label class="container">
+                            <b>Enable S7 Protocol</b>"""
+                            
+                    if (start_snap7 == 'false'):
+                        return_str += """
+                            <input id="snap7_run" type="checkbox">
+                            <span class="checkmark"></span>
+                        </label>
+                        <input type='hidden' value='false' id='snap7_run_text' name='snap7_run_text'/>"""
+                    else:
+                        return_str += """
+                            <input id="snap7_run" type="checkbox" checked>
+                            <span class="checkmark"></span>
+                        </label>
+                        <input type='hidden' value='true' id='snap7_run_text' name='snap7_run_text'/>"""
+
+                    return_str += """
                         <br>
                         <br>
                         <label class="container">
@@ -2250,8 +2317,8 @@ def settings():
                             <input id="auto_run" type="checkbox" checked>
                             <span class="checkmark"></span>
                         </label>
-                        <input type='hidden' value='true' id='auto_run_text' name='auto_run_text'/>"""
-                    
+                        <input type='hidden' value='true' id='auto_run_text' name='auto_run_text'/>"""                   
+
                     return_str += """
                         <br>
                         <h2>Slave Devices</h2>
@@ -2280,11 +2347,12 @@ def settings():
             enip_port = flask.request.form.get('enip_server_port')
             pstorage_poll = flask.request.form.get('pstorage_thread_poll')
             start_run = flask.request.form.get('auto_run_text')
+            start_snap7 = flask.request.form.get('snap7_run_text')
             slave_polling = flask.request.form.get('slave_polling_period')
             slave_timeout = flask.request.form.get('slave_timeout')
             device_hostname = flask.request.form.get('device_hostname')
 
-            (modbus_port, dnp3_port, enip_port, pstorage_poll, start_run, slave_polling, slave_timeout, device_hostname) = sanitize_input(modbus_port, dnp3_port, enip_port, pstorage_poll, start_run, slave_polling, slave_timeout, device_hostname)
+            (modbus_port, dnp3_port, enip_port, pstorage_poll, start_run, start_snap7, slave_polling, slave_timeout, device_hostname) = sanitize_input(modbus_port, dnp3_port, enip_port, pstorage_poll, start_run, start_snap7, slave_polling, slave_timeout, device_hostname)
 
             # Change hostname if needed
             current_hostname = socket.gethostname()
@@ -2331,6 +2399,13 @@ def settings():
                         cur.execute("UPDATE Settings SET Value = 'false' WHERE Key = 'Start_run_mode'")
                         conn.commit()
                         
+                    if (start_snap7 == 'true'):
+                        cur.execute("UPDATE Settings SET Value = 'true' WHERE Key = 'snap7'")
+                        conn.commit()
+                    else:
+                        cur.execute("UPDATE Settings SET Value = 'false' WHERE Key = 'snap7'")
+                        conn.commit()
+
                     cur.execute("UPDATE Settings SET Value = ? WHERE Key = 'Slave_polling'", (str(slave_polling),))
                     conn.commit()
                     
